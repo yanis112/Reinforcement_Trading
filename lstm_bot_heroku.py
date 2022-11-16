@@ -15,22 +15,16 @@ import matplotlib.pyplot as plt
 import tensorflow
 from tensorflow import keras
 import binance
-from tensorflow.keras.layers import LSTM,Dense,Dropout,BatchNormalization
+from tensorflow.keras.layers import LSTM,Dense
 from tensorflow.keras.models import Sequential
 from binance.client import Client
+from binance.enums import *
 import time as time
-#pip install ftx
 import datetime
 import requests
-import ftx
-from ftx import FtxClient
-#!pip install ta
 import ta
 import math
 import smtplib
-
-
-#!pip freeze > requirements.txt
 
 def formatPrice(n):
     return ("-$" if n < 0 else "$") + "{0:.2f}".format(abs(n))
@@ -79,45 +73,8 @@ def normalize(list):
       a.append((i-mini)/(maxi-mini))
   return(a)
 
-def denormalize(list):
-  a=[]
-  for i in list:
-      a.append(i*(maxi-mini)+mini)
-  return(a)
-
-#Denoising Autoencoder
-from tensorflow.keras.constraints import max_norm
-from tensorflow.keras.layers import Conv1DTranspose,Conv1D
-from tensorflow.keras.models import Sequential
-input_shape = (30, 1)
-no_epochs = 5
-train_test_split = 0.3
-validation_split = 0.2
-verbosity = 1
-max_norm_value = 2.0
 
 
-def init_denois():
-  model = Sequential()
-  model.add(Conv1D(128, kernel_size=3, kernel_constraint=max_norm(max_norm_value), activation='gelu', kernel_initializer='he_uniform', input_shape=input_shape))
-  model.add(Conv1D(32, kernel_size=3, kernel_constraint=max_norm(max_norm_value), activation='gelu', kernel_initializer='he_uniform'))
-  model.add(Conv1DTranspose(32, kernel_size=3, kernel_constraint=max_norm(max_norm_value), activation='gelu', kernel_initializer='he_uniform'))
-  model.add(Conv1DTranspose(128, kernel_size=3, kernel_constraint=max_norm(max_norm_value), activation='gelu', kernel_initializer='he_uniform'))
-  model.add(Conv1D(1, kernel_size=3, kernel_constraint=max_norm(max_norm_value), activation='tanh', padding='same'))
-
-  # Compile and fit data
-  model.compile(optimizer='adam', loss='binary_crossentropy')
-  return(model)
-
-denoiser=init_denois()
-denoiser.load_weights(checkpoint_path1)
-
-#fonction pour débruiter les états
-def denoi_state(st):
-  a=st
-  b=normalize(a)
-  p=denoiser.predict(np.array([b]))[0].reshape(1,-1)[0]
-  return(np.array([np.array(p)]))
 
 def init():
   model=Sequential()
@@ -143,26 +100,15 @@ def merge(tab1,tab2):
   return(np.array(l))
 
 def get_BTC_balance():
-  accountName = 'yanisyanis545@gmail.com'                 
-  pairSymbol =  'BTC/USDT'    
-  fiatSymbol = 'USDT'             
-  cryptoSymbol = 'BTC'              
-  client_ftx = ftx.FtxClient(api_key='SH6WTFG2zpVi3-1JTAMbaf7tlDO6Ng1LbQTcAhgg',api_secret='stiLn1NlokBaHlfZOLTSkYxGaNpPwJIHQPmYO4Ac')
-  balance = client_ftx.get_balances()
-  btc_total = [b['total'] for b in balance if b['coin'] == 'BTC']
-  return(btc_total[0])
+  client = Client(api_key, api_secret)
+  balance = client.get_asset_balance(asset='BTC')
+  return(balance)
 
 get_BTC_balance()
 
-def get_USD_balance():
-  accountName = 'yanisyanis545@gmail.com'                 
-  pairSymbol =  'BTC/USDT'    
-  fiatSymbol = 'USDT'             
-  cryptoSymbol = 'BTC'              
-  client_ftx = ftx.FtxClient(api_key='SH6WTFG2zpVi3-1JTAMbaf7tlDO6Ng1LbQTcAhgg',api_secret='stiLn1NlokBaHlfZOLTSkYxGaNpPwJIHQPmYO4Ac')
-  balance = client_ftx.get_balances()
-  btc_total = [b['total'] for b in balance if b['coin'] == 'USD']
-  return(btc_total[0])
+def get_USD_balance():                       
+  client = Client(api_key, api_secret)
+  balance = client.get_asset_balance(asset='USDT')
 
 get_USD_balance()
 
@@ -205,11 +151,8 @@ while True:
   prix1=destring(prix) 
   volume1=destring(volume) 
 
-  state_pri = np.array(prix1[-31:-1])
-  state_vol = np.array(volume1[-31:-1])
-  state_pri=denoiser.predict(np.array([normalize(state_pri)]))[0].reshape(1,-1)[0]
-  state_vol=denoiser.predict(np.array([normalize(state_vol)]))[0].reshape(1,-1)[0]
-
+  state_pri = np.array(prix1[-51:-1])
+  state_vol = np.array(volume1[-51:-1])
 
   #on détermine l'action
   action=model.predict(np.array([merge(state_pri,state_vol)]))[0]
@@ -220,9 +163,8 @@ while True:
   if action[0]>=action[1] and not is_bought() and it!=0:
       print("Buy: " + formatPrice(prix1[-1]))
       quantityBuy = truncate(float(fiatAmount)/prix1[-1], myTruncate)
-      #buyOrder = client.place_order(market=pairSymbol,side="buy",price=None,size=quantityBuy,type='market') #On achete
       try:
-        buyOrder=client_ftx.place_order(market=f"BTC/USD",side="buy",price=prix1[-1],size=quantityBuy)
+        buyOrder=order = client.create_test_order(symbol='BTCUSD',side=SIDE_BUY,type=ORDER_TYPE_LIMIT,timeInForce=TIME_IN_FORCE_GTC,quantity=quantityBuy,price=prix[-1])
       except :
         send("buy failed")
       #print(buyOrder)
@@ -232,9 +174,8 @@ while True:
 
   elif action[1]>action[0] and is_bought() and it!=0:
       is_bought=False
-      #buyOrder = client.place_order(market=pairSymbol,side="sell",price=None,size=truncate(cryptoAmount, myTruncate),type='market')
       try:
-         sellOrder=client_ftx.place_order(market=f"BTC/USD",side="sell",price=state_pri[-1],size=quantityBuy)
+         buyOrder=order = client.create_test_order(symbol='BTCUSD',side=SIDE_SELL,type=ORDER_TYPE_LIMIT,timeInForce=TIME_IN_FORCE_GTC,quantity=quantityBuy,price=prix[-1])
       except:
         send("sell failed")
       print(buyOrder)   
