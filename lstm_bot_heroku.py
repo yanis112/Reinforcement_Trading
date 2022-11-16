@@ -113,7 +113,7 @@ def get_USD_balance():
 get_USD_balance()
 
 def is_bought():
-  client_ftx = ftx.FtxClient(api_key='SH6WTFG2zpVi3-1JTAMbaf7tlDO6Ng1LbQTcAhgg',api_secret='stiLn1NlokBaHlfZOLTSkYxGaNpPwJIHQPmYO4Ac')    
+  client = Client(api_key, api_secret)
   fiat=get_USD_balance()
   cryp=get_BTC_balance()
   if fiat<0.01:
