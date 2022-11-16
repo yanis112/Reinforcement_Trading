@@ -77,13 +77,33 @@ def normalize(list):
 
 
 def init():
-  model=Sequential()
-  model.add(LSTM(64,return_sequences=True,input_shape=(30,2),dropout=0.3))  #64-256 selon clément
-  model.add(LSTM(64,return_sequences=False,dropout=0.3))
-  model.add(Dense(64,activation='gelu'))
-  model.add(Dense(units=2,activation='softmax'))
-  model.compile(optimizer='adam', loss='binary_crossentropy',metrics=['accuracy'])
-  return(model)
+    tensorflow.random.set_seed(1234)
+    tensorflow.keras.initializers.HeUniform()
+    model=Sequential()
+    state_input = layers.Input(shape=(window,2))
+    state_out = layers.LSTM(units=64,return_sequences=True)(state_input) 
+    state_out = layers.LSTM(units=64,return_sequences=False)(state_out) 
+    state_out=layers.Flatten()(state_out)
+    state_out= layers.Dense(units=32,activation="gelu")(state_out)
+
+    # Action as input
+    wallet_input = layers.Input(shape=(2))
+    wallet_out = layers.Dense(5,activation="gelu")(wallet_input)
+    wallet_out = layers.Dense(5,activation="gelu")(wallet_out)
+
+    # Both are passed through seperate layer before concatenating
+
+    concat = layers.Concatenate()([state_out, wallet_out])
+    concat = layers.Dense(32,activation='gelu')(concat)
+    concat = layers.Dense(32,activation='gelu')(concat)
+    outputs = layers.Dense(3,activation="linear")(concat)
+
+    # Outputs single value for give state-action
+    model = tensorflow.keras.Model([state_input, wallet_input], outputs)
+    model.compile(loss=tensorflow.keras.losses.Huber(),optimizer=Adam(lr=0.001))
+    return(model)
+    
+
 
 model=init()
 model.load_weights(checkpoint_path2)
