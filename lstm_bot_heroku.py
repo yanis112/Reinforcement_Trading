@@ -173,14 +173,22 @@ while True:
 
   state_pri = np.array(prix1[-51:-1])
   state_vol = np.array(volume1[-51:-1])
+  
+  def wal_state():
+    if is_bought():
+        return(np.array([1,0]))
+    else:
+        return(np.array([0,1]))
+
+
 
   #on détermine l'action
-  action=model.predict(np.array([merge(state_pri,state_vol)]))[0]
+  action=model.predict(np.array([merge(state_pri,state_vol)]),wal_state())[0]
 
 
 
 
-  if action[0]>=action[1] and not is_bought() and it!=0:
+  if argmax(action)==0 and not is_bought() and it!=0:
       print("Buy: " + formatPrice(prix1[-1]))
       quantityBuy = truncate(float(fiatAmount)/prix1[-1], myTruncate)
       try:
@@ -192,7 +200,7 @@ while True:
       
 
 
-  elif action[1]>action[0] and is_bought() and it!=0:
+  elif argmax(action)==1 and is_bought() and it!=0:
       is_bought=False
       try:
          buyOrder=order = client.create_test_order(symbol='BTCUSD',side=SIDE_SELL,type=ORDER_TYPE_LIMIT,timeInForce=TIME_IN_FORCE_GTC,quantity=quantityBuy,price=prix[-1])
