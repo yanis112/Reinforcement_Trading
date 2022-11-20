@@ -146,16 +146,7 @@ is_bough()
 #Lancement de la boucle infinie
 
 while True:
-
-  #Connexion à FTX
-  pairSymbol =  'BTC/USD'         
-  fiatSymbol = 'USD'                 
-  cryptoSymbol = 'BTC'             
-  myTruncate = 4                  
-  client_ftx = ftx.FtxClient(api_key='SH6WTFG2zpVi3-1JTAMbaf7tlDO6Ng1LbQTcAhgg',api_secret='stiLn1NlokBaHlfZOLTSkYxGaNpPwJIHQPmYO4Ac')                 
-    
   # Récupérer les montants
-    
   fiatAmount=get_USD_balance()
   fiatAmount=1000
   cryptoAmount=get_BTC_balance()
